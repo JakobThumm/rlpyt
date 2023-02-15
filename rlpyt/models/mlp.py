@@ -18,6 +18,7 @@ class MlpModel(torch.nn.Module):
             hidden_sizes,  # Can be empty list or None for none.
             output_size=None,  # if None, last layer has nonlinearity applied.
             nonlinearity=torch.nn.ReLU,  # Module, not Functional.
+            init_gain=None # Initial gain
             ):
         super().__init__()
         if isinstance(hidden_sizes, int):
@@ -28,6 +29,10 @@ class MlpModel(torch.nn.Module):
             zip([input_size] + hidden_sizes[:-1], hidden_sizes)]
         sequence = list()
         for layer in hidden_layers:
+            if init_gain is not None:
+                torch.nn.init.orthogonal_(layer.weight, gain=init_gain)
+                if layer.bias is not None:
+                    layer.bias.data.fill_(0.0)
             sequence.extend([layer, nonlinearity()])
         if output_size is not None:
             last_size = hidden_sizes[-1] if hidden_sizes else input_size

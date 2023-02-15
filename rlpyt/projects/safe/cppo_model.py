@@ -26,8 +26,17 @@ class CppoModel(torch.nn.Module):
             init_log_std=0.,
             normalize_observation=True,
             var_clip=1e-6,
+            orthogonal_init=False,
             ):
         super().__init__()
+        if orthogonal_init:
+            mlp_init_gain = np.sqrt(2)
+            mu_init_gain = 0.01
+            v_init_gain = 1
+        else:
+            mlp_init_gain = None
+            mu_init_gain = None
+            v_init_gain = None
         if hidden_nonlinearity == "tanh":  # So these can be strings in config file.
             hidden_nonlinearity = torch.nn.Tanh
         elif hidden_nonlinearity == "relu":
@@ -46,6 +55,7 @@ class CppoModel(torch.nn.Module):
             input_size=input_size,
             hidden_sizes=hidden_sizes or [256, 256],
             nonlinearity=hidden_nonlinearity,
+            init_gain=mlp_init_gain,
         )
         last_size = self.body.output_size
         if lstm_size:
@@ -55,13 +65,25 @@ class CppoModel(torch.nn.Module):
         else:
             self.lstm = None
         mu_linear = torch.nn.Linear(last_size, action_size)
+        if mu_init_gain is not None:
+            torch.nn.init.orthogonal_(mu_linear.weight, gain=mu_init_gain)
+            if mu_linear.bias is not None:
+                mu_linear.bias.data.fill_(0.0)
         if mu_nonlinearity is not None:
             self.mu = torch.nn.Sequential(mu_linear, mu_nonlinearity())
         else:
             self.mu = mu_linear
         self.value = torch.nn.Linear(last_size, 1)
+        if v_init_gain is not None:
+            torch.nn.init.orthogonal_(self.value.weight, gain=v_init_gain)
+            if self.value.bias is not None:
+                self.value.bias.data.fill_(0.0)
         if constraint:
             self.constraint = torch.nn.Linear(last_size, 1)
+            if v_init_gain is not None:
+                torch.nn.init.orthogonal_(self.constraint.weight, gain=v_init_gain)
+                if self.constraint.bias is not None:
+                    self.constraint.bias.data.fill_(0.0)
         else:
             self.constraint = None
         self.log_std = torch.nn.Parameter(init_log_std *
