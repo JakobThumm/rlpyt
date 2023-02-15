@@ -3,7 +3,7 @@
 
 import numpy as np
 
-import safety_gym
+# import safety_gym
 import gym
 from gym import Wrapper
 
@@ -72,7 +72,7 @@ class SafetyGymEnvWrapper(Wrapper):
             if isinstance(v, float):
                 info[k] = np.dtype("float32").type(v)  # In case computing on.
         # Look inside safexp physics env for this logic on env horizon:
-        info["timeout"] = d and (self.env.steps >= self.env.num_steps)
+        # info["timeout"] = d and (self.env.steps >= self.env.num_steps)
         # info["timeout_next"] = not d and (
         #     self.env.steps == self.env.num_steps - 1)
         return o, r, d, info
