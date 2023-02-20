@@ -41,12 +41,11 @@ def average_all_seeds(path_to_folder):
     # create a new dataframe with the calculated values
     output_df = pd.DataFrame({
         'step': df['Diagnostics/CumSteps'].values,
-        'reward_mean': reward_mean,
-        'reward_std': reward_std,
-        'cost_mean': cost_mean,
-        'cost_std': cost_std
+        'ReturnAverage': reward_mean,
+        'ReturnStd': reward_std,
+        'CostAverage': cost_mean,
+        'CostStd': cost_std
     })
-
     # output the dataframe to a csv file
     output_df.to_csv(os.path.join(path_to_folder, 'summary.csv'), index=False)
 
