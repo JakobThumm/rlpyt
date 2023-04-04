@@ -4,7 +4,8 @@ import os
 import argparse
 import pandas as pd
 import numpy as np
-
+import glob
+from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
 
 
 def average_all_seeds(path_to_folder, window_size=1):
@@ -20,13 +21,24 @@ def average_all_seeds(path_to_folder, window_size=1):
     # create an empty list to store the numpy arrays
     reward_arrays = []
     cost_arrays = []
+    step_arrays = []
+    tag_base = "rollout/"
 
     # loop through each subfolder and load the progress.csv file into a pandas dataframe
     for subfolder in subfolders:
-        csv_file = os.path.join(subfolder, 'run_0', 'progress.csv')
-        df = pd.read_csv(csv_file)
-        reward_arrays.append(df['ReturnAverage'].values)
-        cost_arrays.append(df['CostAverage'].values)
+        summary_iterator = EventAccumulator(subfolder + '/PPO_1/').Reload()
+        reward = pd.DataFrame.from_records(
+            summary_iterator.Scalars(tag_base + 'ep_rew_mean'),
+            columns=summary_iterator.Scalars(tag_base + 'ep_rew_mean')[0]._fields)["value"]
+        cost = pd.DataFrame.from_records(
+            summary_iterator.Scalars(tag_base + 'cumulative_cost'),
+            columns=summary_iterator.Scalars(tag_base + 'cumulative_cost')[0]._fields)["value"]
+        steps = pd.DataFrame.from_records(
+            summary_iterator.Scalars(tag_base + 'ep_rew_mean'),
+            columns=summary_iterator.Scalars(tag_base + 'ep_rew_mean')[0]._fields)["step"]
+        reward_arrays.append(reward.values)
+        cost_arrays.append(cost.values)
+        step_arrays.append(steps.values)
 
     # concatenate the numpy arrays on a new axis
     reward_array = np.stack(reward_arrays, axis=0)
@@ -45,7 +57,7 @@ def average_all_seeds(path_to_folder, window_size=1):
         reward_std[i-half_window] = np.std(reward_array[:, i-half_window:i+half_window])
         cost_mean[i-half_window] = np.mean(cost_array[:, i-half_window:i+half_window])
         cost_std[i-half_window] = np.std(cost_array[:, i-half_window:i+half_window])
-        step[i-half_window] = df['Diagnostics/CumSteps'].values[i]
+        step[i-half_window] = step_arrays[0][i]
 
     # create a new dataframe with the calculated values
     output_df = pd.DataFrame({
